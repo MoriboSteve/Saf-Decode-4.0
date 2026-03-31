@@ -1,0 +1,7 @@
+{
+  "name": "JabaAi",
+  "description": "A specialized market negotiator for Miraa and Muguka farmers in Meru, providing real-time price transparency and localized selling advice.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
