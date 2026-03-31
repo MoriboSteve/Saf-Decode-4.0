@@ -22,9 +22,10 @@ import {
   Info,
   ChevronRight
 } from 'lucide-react';
-import { getMarketAdvice, speakAdvice, type MarketAdvice } from './services/geminiService';
+import { getMarketAdvice, speakAdvice, getMarketStats, type MarketAdvice, type MarketStats } from './services/geminiService';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { useEffect } from 'react';
 
 type Tab = 'negotiator' | 'marketplace' | 'health';
 
@@ -34,6 +35,18 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [advice, setAdvice] = useState<any | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [marketStats, setMarketStats] = useState<MarketStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      setStatsLoading(true);
+      const stats = await getMarketStats();
+      if (stats) setMarketStats(stats);
+      setStatsLoading(false);
+    };
+    fetchStats();
+  }, []);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -252,33 +265,80 @@ export default function App() {
               className="space-y-6"
             >
               <div className="glass-card p-8 rounded-[32px]">
-                <h2 className="text-2xl font-bold text-miraa-dark mb-6 flex items-center gap-3">
-                  <div className="p-2 bg-miraa-dark text-white rounded-xl">
-                    <ShoppingBag size={24} />
-                  </div>
-                  Digital Marketplace
-                </h2>
-                <div className="space-y-4">
-                  {[
-                    { crop: 'Miraa (Grade A)', price: 'Ksh 1,200 - 1,500', trend: 'up', region: 'Maua' },
-                    { crop: 'Miraa (Grade B)', price: 'Ksh 800 - 1,000', trend: 'stable', region: 'Meru' },
-                    { crop: 'Muguka (Medium Bag)', price: 'Ksh 2,500 - 3,200', trend: 'up', region: 'Embu' },
-                    { crop: 'Muguka (Small Bag)', price: 'Ksh 1,200 - 1,500', trend: 'down', region: 'Nairobi' },
-                  ].map((item, i) => (
-                    <div key={i} className="flex justify-between items-center p-5 bg-white/40 rounded-2xl border border-miraa-dark/5 hover:bg-white/60 transition-all cursor-default">
-                      <div>
-                        <p className="font-bold text-lg text-miraa-dark">{item.crop}</p>
-                        <p className="text-xs text-miraa-dark/40 font-medium">{item.region}</p>
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-bold text-miraa-dark flex items-center gap-3">
+                    <div className="p-2 bg-miraa-dark text-white rounded-xl">
+                      <ShoppingBag size={24} />
+                    </div>
+                    Market Statistics
+                  </h2>
+                  {statsLoading && <Loader2 className="animate-spin text-miraa-dark/30" />}
+                </div>
+
+                {marketStats ? (
+                  <div className="space-y-8">
+                    {/* Key Metrics */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-miraa-dark text-white p-6 rounded-2xl shadow-lg">
+                        <p className="text-[10px] uppercase tracking-widest font-bold text-miraa-light mb-1">Annual Production</p>
+                        <p className="text-xl font-bold">{marketStats.annualProduction}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-xl text-miraa-fresh">{item.price}</p>
-                        <p className={cn("text-[10px] font-bold uppercase tracking-widest", item.trend === 'up' ? "text-green-600" : item.trend === 'down' ? "text-red-600" : "text-miraa-dark/30")}>
-                          {item.trend}
-                        </p>
+                      <div className="bg-miraa-fresh text-white p-6 rounded-2xl shadow-lg">
+                        <p className="text-[10px] uppercase tracking-widest font-bold text-miraa-light mb-1">Export Value</p>
+                        <p className="text-xl font-bold">{marketStats.exportValue}</p>
+                      </div>
+                      <div className="bg-white/40 p-6 rounded-2xl border border-miraa-dark/5">
+                        <p className="text-[10px] uppercase tracking-widest font-bold text-miraa-dark/40 mb-1">Employment Impact</p>
+                        <p className="text-xl font-bold text-miraa-dark">{marketStats.employmentImpact}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
+
+                    {/* Regional Prices Table */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-miraa-dark/60 ml-2">Regional Price Benchmarks</h3>
+                      <div className="overflow-hidden rounded-2xl border border-miraa-dark/5">
+                        <table className="w-full text-left bg-white/30 backdrop-blur-sm">
+                          <thead className="bg-miraa-dark text-white text-[10px] uppercase tracking-widest">
+                            <tr>
+                              <th className="p-4">Region</th>
+                              <th className="p-4">Miraa</th>
+                              <th className="p-4">Muguka</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-miraa-dark/5">
+                            {marketStats.regionalPrices.map((row, i) => (
+                              <tr key={i} className="hover:bg-white/40 transition-colors">
+                                <td className="p-4 font-bold text-miraa-dark">{row.region}</td>
+                                <td className="p-4 text-miraa-fresh font-medium">{row.miraa}</td>
+                                <td className="p-4 text-miraa-fresh font-medium">{row.muguka}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Trends & Challenges */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-miraa-dark/60 ml-2">Current Trends & Challenges</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {marketStats.trends.map((trend, i) => (
+                          <div key={i} className="flex items-start gap-3 p-4 bg-white/40 rounded-xl border border-miraa-dark/5">
+                            <div className="p-1 bg-miraa-light rounded-md mt-0.5">
+                              <ChevronRight size={12} className="text-miraa-dark" />
+                            </div>
+                            <p className="text-sm text-miraa-dark/70 leading-relaxed">{trend}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 text-center space-y-4">
+                    <Loader2 className="animate-spin mx-auto text-miraa-dark/20" size={40} />
+                    <p className="text-miraa-dark/40 font-medium">Fetching latest market data from Meru & Embu...</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

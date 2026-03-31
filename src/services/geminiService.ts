@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
@@ -8,7 +8,59 @@ export interface MarketAdvice {
   bestDayToSell: string;
   reasoning: string;
   marketTrends: string;
+  healthTip: string;
   sources: { title: string; uri: string }[];
+}
+
+export interface MarketStats {
+  annualProduction: string;
+  exportValue: string;
+  employmentImpact: string;
+  regionalPrices: { region: string; miraa: string; muguka: string }[];
+  trends: string[];
+}
+
+export async function getMarketStats(): Promise<MarketStats | null> {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: "Provide the latest market statistics for Miraa and Muguka in Kenya (2024-2025). Include: 1. Estimated annual production volumes. 2. Export value (especially to Somalia). 3. Number of people employed/impacted. 4. Current average prices in Meru, Embu, and Nairobi. 5. Key market trends and challenges.",
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            annualProduction: { type: Type.STRING },
+            exportValue: { type: Type.STRING },
+            employmentImpact: { type: Type.STRING },
+            regionalPrices: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  region: { type: Type.STRING },
+                  miraa: { type: Type.STRING },
+                  muguka: { type: Type.STRING }
+                },
+                required: ["region", "miraa", "muguka"]
+              }
+            },
+            trends: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            }
+          },
+          required: ["annualProduction", "exportValue", "employmentImpact", "regionalPrices", "trends"]
+        }
+      },
+    });
+
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Error fetching market stats:", error);
+    return null;
+  }
 }
 
 export async function getMarketAdvice(farmerInput: string): Promise<MarketAdvice | string> {
